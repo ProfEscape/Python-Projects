@@ -1,3 +1,3 @@
-This repo contains programs for newbie python programmers
+This repo contains Python Projects 
 <br>
 Author - Adnan Hussain
