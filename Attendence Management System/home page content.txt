@@ -1,0 +1,35 @@
+<div class="container">
+    <h1 class="mt-4">Welcome to the Attendance Management System</h1>
+    <p class="lead">Track attendance and manage student details effortlessly.</p>
+
+    <div class="row mt-5">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Students</h5>
+                    <p class="card-text">View and manage student records.</p>
+                    <a href="#" class="btn btn-primary">Go to Students</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Attendance</h5>
+                    <p class="card-text">Mark and review attendance.</p>
+                    <a href="#" class="btn btn-primary">Manage Attendance</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Reports</h5>
+                    <p class="card-text">Generate detailed attendance reports.</p>
+                    <a href="#" class="btn btn-primary">View Reports</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

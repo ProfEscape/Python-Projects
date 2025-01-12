@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="text-primary my-4">Teacher Dashboard</h1>
+    <h3>Class Timetable</h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Day</th>
+                <th>Time</th>
+                <th>Subject</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Timetable data goes here -->
+            <tr>
+                <td>Monday</td>
+                <td>9:00 AM - 10:00 AM</td>
+                <td>Mathematics</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Your Attendance</h3>
+    <p class="text-muted">Attendance data fetched from the system.</p>
+
+    <div class="form-check form-switch my-4">
+        <input class="form-check-input" type="checkbox" id="attendanceToggle">
+        <label class="form-check-label" for="attendanceToggle">Enable Student Attendance</label>
+    </div>
+</div>
+{% endblock %}
