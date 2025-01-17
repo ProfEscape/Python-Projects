@@ -5,9 +5,9 @@
     <h1 class="text-success my-4">Student Dashboard</h1>
     <h3>Personal Details</h3>
     <ul class="list-group mb-4">
-        <li class="list-group-item"><strong>Name:</strong> John Doe</li>
-        <li class="list-group-item"><strong>Roll Number:</strong> 12345</li>
-        <li class="list-group-item"><strong>Course:</strong> B.Tech</li>
+        <li class="list-group-item"><strong>Name:</strong> {{ student.name }}</li>
+        <li class="list-group-item"><strong>Roll Number:</strong> {{ student.usn }}</li>
+        <li class="list-group-item"><strong>Course:</strong> {{ student.course }}</li>
     </ul>
 
     <h3>Attendance</h3>
@@ -18,17 +18,35 @@
                 <th>Classes Attended</th>
                 <th>Total Classes</th>
                 <th>Percentage</th>
+                <th>Action</th>
             </tr>
         </thead>
         <tbody>
-            <!-- Attendance data -->
+            {% for subject in subjects %}
             <tr>
-                <td>Mathematics</td>
-                <td>25</td>
-                <td>30</td>
-                <td>83.33%</td>
+                <td>{{ subject.name }}</td>
+                <td>{{ subject.attended }}</td>
+                <td>{{ subject.total }}</td>
+                <td>
+                    {{ "%.2f" | format((subject.attended / subject.total * 100) if subject.total > 0 else 0) }}%
+                </td>
+                <td>
+                    {% if teacher_enabled_attendance %}
+                        <form action="/mark_attendance" method="POST">
+                            <input type="hidden" name="subject_id" value="{{ subject.id }}">
+                            <input type="hidden" name="student_id" value="{{ student.id }}">
+                            <button type="submit" class="btn btn-primary">Mark Attendance</button>
+                        </form>
+                    {% else %}
+                        <button class="btn btn-secondary" disabled>Attendance Disabled</button>
+                    {% endif %}
+                </td>
             </tr>
+            {% endfor %}
         </tbody>
     </table>
+    <p></p>
+    <a href="/add_subject" class="btn btn-primary">Add Subject</a>
 </div>
 {% endblock %}
+

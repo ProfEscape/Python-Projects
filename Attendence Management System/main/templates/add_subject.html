@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="my-4">Add Subject</h1>
+    
+    <!-- Form to Add a New Subject -->
+    <form action="/add_subject" method="POST" class="mb-5">
+        <div class="mb-3">
+            <label for="subject_name" class="form-label">Subject Name</label>
+            <input type="text" class="form-control" id="subject_name" name="subject_name" placeholder="Enter subject name" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Subject</button>
+    </form>
+
+    <!-- Display Available Subjects -->
+    <h2 class="my-4">Available Subjects</h2>
+    {% if subjects %}
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Subject Name</th>
+                <th>Classes Attended</th>
+                <th>Total Classes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for subject in subjects %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ subject.name }}</td>
+                <td>{{ subject.attended }}</td>
+                <td>{{ subject.total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted">No subjects available. Please add a subject.</p>
+    {% endif %}
+</div>
+{% endblock %}
