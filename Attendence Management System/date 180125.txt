@@ -1,0 +1,485 @@
+date: 18/01/25
+
+
+
+--------------------------------------------------------------------------------------
+FORMS.py
+
+from flask_wtf import FlaskForm
+from wtforms import StringField, EmailField, PasswordField,SubmitField,SelectField, FieldList, FormField,ValidationError
+from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional
+
+
+
+class SubjectForm(FlaskForm):
+    class Meta:
+        csrf = False  # Disable CSRF for nested forms
+
+    subject_name = StringField('Subject Name', validators=[DataRequired(), Length(max=50)])
+    subject_code = StringField('Subject Code', validators=[DataRequired(), Length(max=10)])
+
+class SignUpForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=20)])
+    email = EmailField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
+    role = SelectField('Role', name='role', choices=[('student', 'Student'), ('teacher', 'Teacher')], validators=[DataRequired()], default='student')
+    usn = StringField('USN', name='USN', validators=[Optional(), Length(min=10, max=15)])  # Optional by default
+    teacher_id = StringField('Teacher ID', validators=[Optional(), Length(max=20)])  # Optional by default
+    subjects = FieldList(FormField(SubjectForm), min_entries=1, max_entries=5)
+    submit = SubmitField('Sign Up')
+
+    def validate_usn(self, field):
+        """Validate USN only if the role is 'student'."""
+        if self.role.data == 'student' and not field.data:
+            raise ValidationError("USN is required for students.")
+        if self.role.data == 'student' and field.data:
+            if len(field.data) < 10 or len(field.data) > 15:
+                raise ValidationError("USN must be between 10 and 15 characters.")
+            
+
+    def validate_teacher_id(self, field):
+        """Validate Teacher ID only if the role is 'teacher'."""
+        if self.role.data == 'teacher' and not field.data:
+            raise ValidationError("Teacher ID is required for teachers.")
+
+class LoginForm(FlaskForm):
+    email = EmailField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
+
+------------------------------------------------------------------------------------------------
+SIGNUP.HTML
+{% extends "layout.html" %}
+
+
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center" style="height: 100vh;">
+    <div class="card p-4" style="width: 400px;">
+        <h3 class="text-center">Sign Up</h3>
+        <form method="POST" action="{{ url_for('sign_up') }}">
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+                {{ form.username.label(class="form-label") }}
+                {{ form.username(class="form-control") }}
+            </div>
+            <div class="mb-3">
+                {{ form.email.label(class="form-label") }}
+                {{ form.email(class="form-control") }}
+            </div>
+            <div class="mb-3">
+                {{ form.password.label(class="form-label") }}
+                {{ form.password(class="form-control") }}
+            </div>
+            <div class="mb-3">
+                {{ form.confirm_password.label(class="form-label") }}
+                {{ form.confirm_password(class="form-control") }}
+            </div>
+            <div class="mb-3">
+                {{ form.role.label(class="form-label") }}
+                {{ form.role(class="form-select", id="role", onchange="toggleRoleFields()") }}
+            </div>
+            <div id="studentFields" style="display: none;">
+                <div class="mb-3">
+                    {{ form.usn.label(class="form-label") }}
+                    {{ form.usn(class="form-control") }}
+                </div>
+            </div>
+            <div id="teacherFields" style="display: none;">
+                <div class="mb-3">
+                    {{ form.teacher_id.label(class="form-label") }}
+                    {{ form.teacher_id(class="form-control") }}
+                </div>
+                <h5 class="mt-3">Add Subjects</h5>
+                <div id="subjectFields">
+                    {% for subject_form in form.subjects %}
+                    <div class="row mb-2">
+                        <div class="col">
+                            {{ subject_form.subject_name.label(class="form-label") }}
+                            {{ subject_form.subject_name(class="form-control") }}
+                        </div>
+                        <div class="col">
+                            {{ subject_form.subject_code.label(class="form-label") }}
+                            {{ subject_form.subject_code(class="form-control") }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {{ form.submit(class="btn btn-primary w-100") }}
+        </form>        
+    </div>
+</div>
+<script>
+    function toggleRoleFields() {
+        var role = document.getElementById("role").value;
+        document.getElementById("studentFields").style.display = role === "student" ? "block" : "none";
+        document.getElementById("teacherFields").style.display = role === "teacher" ? "block" : "none";
+    }
+
+    // Ensure the correct fields are displayed on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleRoleFields();  // Call this to set the correct state on page load
+    });
+
+</script>
+{% endblock %}
+
+------------------------------------------------------------------------------------------
+ROUTES.PY
+
+from flask import render_template, redirect, url_for, flash, request, session
+from werkzeug.security import check_password_hash, generate_password_hash
+from main import app, db
+from main.models import Student, Teacher, Subject
+from main.forms import SignUpForm, LoginForm
+
+@app.route('/')
+@app.route('/home')
+def home():
+    return render_template("home.html", title="Home")
+
+@app.route('/dashboard-student')
+def dashboard_student():
+    user_id = session.get('user_id')
+    if session.get('user_role') != 'student' or not user_id:
+        flash('Unauthorized access!', 'danger')
+        return redirect(url_for('login'))
+    student = Student.query.get(user_id)
+    return render_template("student_dashboard.html", title="Student Dashboard", student=student)
+
+@app.route('/dashboard-teacher')
+def dashboard_teacher():
+    user_id = session.get('user_id')
+    if session.get('user_role') != 'teacher' or not user_id:
+        flash('Unauthorized access!', 'danger')
+        return redirect(url_for('login'))
+    teacher = Teacher.query.get(user_id)
+    return render_template("teacher_dashboard.html", title="Teacher Dashboard", teacher=teacher)
+
+
+
+@app.route('/signup', methods=['GET', 'POST'])
+def sign_up():
+    form = SignUpForm()
+    print("Form validate_on_submit():", form.validate_on_submit())
+    print("Form data received:", form.data)
+    print("USN from form:", form.usn.data)
+    print("Role selected:", form.role.data)
+    
+    if form.validate_on_submit():
+        if form.role.data == 'student':
+            user = Student(
+                name=form.username.data,
+                email=form.email.data,
+                usn=form.usn.data,
+                password=form.password.data
+            )
+        elif form.role.data == 'teacher':
+            user = Teacher(
+                name=form.username.data,
+                email=form.email.data,
+                teacher_id=form.teacher_id.data,
+                password=form.password.data
+            )
+            # Add subjects for the teacher
+            for subject_form in form.subjects.entries:
+                subject = Subject(
+                    name=subject_form.data['subject_name'],
+                    code=subject_form.data['subject_code'],
+                    teacher=user
+                )
+                db.session.add(subject)
+        
+        # Add the user to the database
+        try:
+            db.session.add(user)
+            db.session.commit()
+            flash('Account created successfully!', 'success')
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            flash('An error occurred while creating your account.', 'danger')
+            print(e)
+    else:
+        print("Form errors:", form.errors)
+        flash('Please correct the errors in the form.', 'danger')
+
+    return render_template("signup.html", title="Sign Up", form=form)
+
+
+
+# @app.route('/signup', methods=['GET', 'POST'])
+# def sign_up():
+#     form = SignUpForm()
+#     if form.validate_on_submit():
+#         # Determine the role and create the appropriate user
+#         if form.role.data == 'student':
+#             user = Student(name=form.username.data, email=form.email.data, usn=form.usn.data, password= form.password.data)
+#         elif form.role.data == 'teacher':
+#             user = Teacher(name=form.username.data, email=form.email.data, teacher_id=form.teacher_id.data, password= form.password.data)
+#         else:
+#             flash("Invalid role selected", 'danger')
+#             return redirect(url_for('sign_up'))
+
+#         # Add user to the database
+#         try:
+#             db.session.add(user)
+#             db.session.commit()
+#             flash('Account created successfully!', 'success')
+#             return redirect(url_for('login'))
+#         except Exception as e:
+#             flash('An error occurred while creating your account.', 'danger')
+#             print(e)
+#     return render_template("signup.html", title="Sign Up", form=form)
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    print(form.validate_on_submit())
+    if form.validate_on_submit():
+        email = form.email.data
+        password = form.password.data
+
+        # Check if the user is a student
+        student = Student.query.filter_by(email=email).first()
+        # print('\nHashed Password:')
+        # print(student.password, password)
+
+        if student and password == student.password:
+            session['user_id'] = student.id
+            session['user_role'] = 'student'
+            flash('Logged in successfully as a student!', 'success')
+            return redirect(url_for('student_dashboard'))
+        else:
+            print("Login credentials didn't match")
+            flash('Logged in not successfull as a student!', 'success')
+
+        # Check if the user is a teacher
+        teacher = Teacher.query.filter_by(email=email).first()
+        if teacher and password == teacher.password:                   #and check_password_hash(teacher.password, password):
+            session['user_id'] = teacher.id
+            session['user_role'] = 'teacher'
+            flash('Logged in successfully as a teacher!', 'success')
+            return redirect(url_for('dashboard_teacher'))
+        print("Login credentials didn't match")
+    else:
+        print(form.errors)  # Print validation errors for debugging
+        flash('Form validation failed.', 'danger')
+
+    return render_template("login.html", title="Login", form=form)
+    
+
+
+# @app.route('/login', methods=['GET', 'POST'])
+# def login():
+#     form = LoginForm()
+#     if form.validate_on_submit():
+#         email = form.email.data
+#         password = form.password.data
+
+#         # Check if the user is a student
+#         student = Student.query.filter_by(email=email).first()
+#         if student and check_password_hash(student.password, password):
+#             session['user_id'] = student.id
+#             session['user_role'] = 'student'
+#             flash('Logged in successfully!', 'success')
+#             return redirect(url_for('dashboard_student'))
+
+#         # Check if the user is a teacher
+#         teacher = Teacher.query.filter_by(email=email).first()
+#         if teacher and check_password_hash(teacher.password, password):
+#             session['user_id'] = teacher.id
+#             session['user_role'] = 'teacher'
+#             flash('Logged in successfully!', 'success')
+#             return redirect(url_for('dashboard_teacher'))
+
+#         flash('Invalid email or password', 'danger')
+#     return render_template("login.html", title="Login", form=form)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('You have been logged out.', 'success')
+    return redirect(url_for('home'))
+
+
+@app.route('/check-database')
+def check_database():
+    # Fetch all students
+    students = Student.query.all()
+
+    # Fetch all teachers
+    teachers = Teacher.query.all()
+
+    # Render a template to display the data
+    return render_template("check_database.html", students=students, teachers=teachers)
+
+
+
+@app.route('/add_subject', methods=['GET', 'POST'])
+def add_subject():
+    if 'user_id' not in session or session.get('user_role') != 'student':
+        flash('You must be logged in as a student to access this page.', 'danger')
+        return redirect(url_for('login'))
+
+    student_id = session['user_id']
+
+    if request.method == 'POST':
+        subject_name = request.form.get('subject_name')
+        subject_code = request.form.get('subject_code')
+
+        if not subject_name or not subject_code:
+            flash('Subject name and code cannot be empty.', 'danger')
+            return redirect(url_for('add_subject'))
+
+        # Check if the subject already exists for the student
+        existing_subject = Subject.query.filter_by(name=subject_name, student_id=student_id).first()
+        if existing_subject:
+            flash('Subject already exists.', 'warning')
+            return redirect(url_for('add_subject'))
+
+        # Add the new subject (teacher_id can be None or a specific value)
+        new_subject = Subject(
+            name=subject_name, 
+            code=subject_code, 
+            student_id=student_id, 
+            teacher_id=None  # Adjust if you have a specific teacher
+        )
+        db.session.add(new_subject)
+        db.session.commit()
+        flash('Subject added successfully!', 'success')
+        return redirect(url_for('add_subject'))
+
+    # Fetch existing subjects for the logged-in student
+    subjects = Subject.query.filter_by(student_id=student_id).all()
+    return render_template('add_subject.html', title='Add Subject', subjects=subjects)
+
+# @app.route('/add_subject', methods=['GET', 'POST'])
+# def add_subject():
+#     if 'user_id' not in session or session.get('user_role') != 'student':
+#         flash('You must be logged in as a student to access this page.', 'danger')
+#         return redirect(url_for('login'))
+
+#     student_id = session['user_id']
+
+#     if request.method == 'POST':
+#         subject_name = request.form.get('subject_name')
+#         if not subject_name:
+#             flash('Subject name cannot be empty.', 'danger')
+#             return redirect(url_for('add_subject'))
+
+#         # Check if the subject already exists for the student
+#         existing_subject = Subject.query.filter_by(name=subject_name, student_id=student_id).first()
+#         if existing_subject:
+#             flash('Subject already exists.', 'warning')
+#             return redirect(url_for('add_subject'))
+
+#         # Add the new subject
+#         new_subject = Subject(name=subject_name, student_id=student_id)
+#         db.session.add(new_subject)
+#         db.session.commit()
+#         flash('Subject added successfully!', 'success')
+#         return redirect(url_for('add_subject'))
+
+#     # Fetch existing subjects
+#     subjects = Subject.query.filter_by(student_id=student_id).all()
+#     return render_template('add_subject.html', title='Add Subject', subjects=subjects)
+
+-------------------------------------------------------------------------------
+
+
+MODELS.PY
+from main import db
+from werkzeug.security import generate_password_hash
+
+
+# Student model
+class Student(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    usn = db.Column(db.String(20), unique=True, nullable=False)
+    password = db.Column(db.String(128), nullable=False)
+    attendance = db.relationship('Attendance', backref='student', lazy=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=True)  # Foreign key for Course
+    subjects = db.relationship('Subject', back_populates='student', cascade='all, delete-orphan')
+    
+
+    def __init__(self, name, email, usn, password):
+        self.name = name
+        self.email = email
+        self.usn = usn
+        self.password = password
+
+
+
+    def __repr__(self):
+        return f"<Student(name={self.name}, email={self.email}, usn={self.usn})>"
+
+# Teacher model
+class Teacher(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    teacher_id = db.Column(db.String(20), unique=True, nullable=False)
+    password = db.Column(db.String(128), nullable=False)
+    enable_student_attendance = db.Column(db.Boolean, default=False)
+    subjects = db.relationship('Subject', back_populates='teacher', cascade='all, delete-orphan')
+ 
+
+    def __init__(self, name, email, teacher_id, password):
+        self.name = name
+        self.email = email
+        self.teacher_id = teacher_id
+        self.password = password
+    
+
+    def __repr__(self):
+        return f"<Teacher(name={self.name}, email={self.email}, teacher_id={self.teacher_id})>"
+
+# Subject model
+class Subject(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    code = db.Column(db.String(10), unique=True, nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=True)
+
+    # Relationship with the Student model and Teacher Model
+    student = db.relationship('Student', back_populates='subjects')
+    teacher = db.relationship('Teacher', back_populates='subjects') 
+    
+    def __init__(self, name, code, teacher):
+        self.name = name
+        self.code = code
+        self.teacher = teacher
+
+    def __repr__(self):
+        return f"<Subject(name={self.name}, code={self.code})>"
+
+# Attendance model
+class Attendance(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=False)
+    classes_attended = db.Column(db.Integer, default=0)
+    total_classes = db.Column(db.Integer, default=0)
+
+    def __repr__(self):
+        return (f"<Attendance(student_id={self.student_id}, subject_id={self.subject_id}, "
+                f"classes_attended={self.classes_attended}, total_classes={self.total_classes})>")
+
+# Course model (optional, if courses encompass multiple subjects)
+class Course(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    code = db.Column(db.String(10), unique=True, nullable=False)
+    students = db.relationship('Student', backref='course', lazy=True)
+
+    def __repr__(self):
+        return f"<Course(name={self.name}, code={self.code})>"
+-----------------------------------------------------------------------------------------------
+
+

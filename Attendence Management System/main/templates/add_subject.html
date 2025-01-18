@@ -1,43 +1,103 @@
 {% extends "layout.html" %}
-
 {% block content %}
 <div class="container">
-    <h1 class="my-4">Add Subject</h1>
+    <h1 class="text-success my-4">Add Subject</h1>
     
-    <!-- Form to Add a New Subject -->
-    <form action="/add_subject" method="POST" class="mb-5">
-        <div class="mb-3">
-            <label for="subject_name" class="form-label">Subject Name</label>
-            <input type="text" class="form-control" id="subject_name" name="subject_name" placeholder="Enter subject name" required>
-        </div>
-        <button type="submit" class="btn btn-primary">Add Subject</button>
-    </form>
+    <!-- Current Enrolled Subjects -->
+    <div class="mb-4">
+        <h3>Currently Enrolled Subjects</h3>
+        {% if current_subjects %}
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Subject Code</th>
+                    <th>Subject Name</th>
+                    <th>Teacher</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subject in current_subjects %}
+                <tr>
+                    <td>{{ subject.code }}</td>
+                    <td>{{ subject.name }}</td>
+                    <td>{{ subject.teacher.name if subject.teacher else 'Not Assigned' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">You are not enrolled in any subjects yet.</p>
+        {% endif %}
+    </div>
 
-    <!-- Display Available Subjects -->
-    <h2 class="my-4">Available Subjects</h2>
-    {% if subjects %}
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Subject Name</th>
-                <th>Classes Attended</th>
-                <th>Total Classes</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for subject in subjects %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ subject.name }}</td>
-                <td>{{ subject.attended }}</td>
-                <td>{{ subject.total }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p class="text-muted">No subjects available. Please add a subject.</p>
-    {% endif %}
+    <!-- Form to Add a Subject -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">Enroll in a Subject</h3>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('add_subject') }}">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">
+                    {{ form.subject_code.label(class="form-label") }}
+                    {{ form.subject_code(class="form-control") }}
+                    {% if form.subject_code.errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.subject_code.errors %}
+                        <span>{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="mb-3">
+                    {{ form.subject_name.label(class="form-label") }}
+                    {{ form.subject_name(class="form-control") }}
+                    {% if form.subject_name.errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.subject_name.errors %}
+                        <span>{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {{ form.submit(class="btn btn-primary") }}
+            </form>
+        </div>
+    </div>
+
+    <!-- Available Subjects -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="mb-0">Available Subjects</h3>
+        </div>
+        <div class="card-body">
+            {% if available_subjects %}
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Subject Code</th>
+                        <th>Subject Name</th>
+                        <th>Teacher</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for subject in available_subjects %}
+                    <tr>
+                        <td>{{ subject.code }}</td>
+                        <td>{{ subject.name }}</td>
+                        <td>{{ subject.teacher.name if subject.teacher else 'Not Assigned' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted">No additional subjects available for enrollment.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <a href="{{ url_for('dashboard_student') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
 </div>
 {% endblock %}

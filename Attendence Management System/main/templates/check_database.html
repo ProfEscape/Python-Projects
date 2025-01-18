@@ -12,7 +12,7 @@
                 <th>Email</th>
                 <th>USN</th>
                 <th>Course</th>
-                <!-- <th>Password</th> -->
+                <th>Password</th>
             </tr>
         </thead>
         <tbody>
@@ -23,7 +23,7 @@
                 <td>{{ student.email }}</td>
                 <td>{{ student.usn }}</td>
                 <td>{{ student.course.name if student.course else 'N/A' }}</td>
-                <!-- <td>{{ student.password }}</td> -->
+                <td>{{ student.password }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -46,6 +46,26 @@
                 <td>{{ teacher.name }}</td>
                 <td>{{ teacher.email }}</td>
                 <td>{{ teacher.teacher_id }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Subjects</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Code</th>
+                <th>Name</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for subject in subjects %}
+            <tr>
+                <td>{{ subject.id }}</td>
+                <td>{{ subject.code }}</td>
+                <td>{{ subject.name }}</td>
             </tr>
             {% endfor %}
         </tbody>
